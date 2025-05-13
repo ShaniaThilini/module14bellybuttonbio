@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Belly Button Biodiversity Dashboard</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    #dashboard {
+      display: flex;
+      gap: 30px;
+    }
+    #bar, #bubble {
+      margin-top: 20px;
+    }
+    #sample-metadata {
+      border: 1px solid #ccc;
+      padding: 10px;
+      width: 250px;
+    }
+    .metadata-title {
+      background-color: #007bff;
+      color: white;
+      padding: 5px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>Belly Button Biodiversity Dashboard</h1>
+  <p>Use the interactive charts below to explore the dataset!</p>
+
+  <div id="dashboard">
+    <div>
+      <label for="selDataset">Test Subject ID No:</label>
+      <select id="selDataset"></select>
+      <div id="sample-metadata">
+        <div class="metadata-title">Demographic Info</div>
+        <div id="metadata-content"></div>
+      </div>
+    </div>
+
+    <div id="bar"></div>
+  </div>
+
+  <div id="bubble"></div>
+
+  <script>
+    const url = "https://static.bc-edx.com/data/dl-1-2/m14/lms/starter/samples.json";
+
+    d3.json(url).then(data => {
+      const names = data.names;
+      const samples = data.samples;
+      const metadata = data.metadata;
+
+      const dropdown = d3.select("#selDataset");
+      names.forEach(name => {
+        dropdown.append("option").text(name).property("value", name);
+      });
+
+      // Initial load
+      updateAll(names[0]);
+
+      dropdown.on("change", function () {
+        const selectedId = this.value;
+        updateAll(selectedId);
+      });
+
+      function updateAll(sampleId) {
+        buildBarChart(sampleId);
+        buildBubbleChart(sampleId);
+        buildMetadata(sampleId);
+      }
+
+      function buildBarChart(sampleId) {
+        const sample = samples.find(s => s.id === sampleId);
+        const top10_values = sample.sample_values.slice(0, 10).reverse();
+        const top10_ids = sample.otu_ids.slice(0, 10).map(id => `OTU ${id}`).reverse();
+        const top10_labels = sample.otu_labels.slice(0, 10).reverse();
+
+        const trace = {
+          x: top10_values,
+          y: top10_ids,
+          text: top10_labels,
+          type: "bar",
+          orientation: "h"
+        };
+
+        const layout = {
+          title: `Top 10 Bacteria Cultures Found`,
+          margin: { l: 100, r: 100, t: 50, b: 50 }
+        };
+
+        Plotly.newPlot("bar", [trace], layout);
+      }
+
+      function buildBubbleChart(sampleId) {
+        const sample = samples.find(s => s.id === sampleId);
+
+        const trace = {
+          x: sample.otu_ids,
+          y: sample.sample_values,
+          text: sample.otu_labels,
+          mode: "markers",
+          marker: {
+            size: sample.sample_values,
+            color: sample.otu_ids,
+            colorscale: "Earth"
+          }
+        };
+
+        const layout = {
+          title: "Bacteria Cultures Per Sample",
+          xaxis: { title: "OTU ID" },
+          yaxis: { title: "Number of Bacteria" },
+          hovermode: "closest"
+        };
+
+        Plotly.newPlot("bubble", [trace], layout);
+      }
+
+      function buildMetadata(sampleId) {
+        const meta = metadata.find(m => m.id == sampleId);  // use loose equality for type match
+        const panel = d3.select("#metadata-content");
+        panel.html(""); // Clear existing content
+
+        // Loop through each key-value pair and append
+        Object.entries(meta).forEach(([key, value]) => {
+          panel.append("p").text(`${key.toUpperCase()}: ${value}`);
+        });
+      }
+    });
+  </script>
+</body>
+</html>
